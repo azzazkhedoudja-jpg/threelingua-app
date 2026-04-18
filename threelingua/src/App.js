@@ -18,10 +18,13 @@ function Header() {
         <div style={{ fontSize: 22, fontWeight: 800, color: 'white' }}>Three<span style={{ color: '#13C882' }}>Lingua</span></div>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Paris & Île-de-France</div>
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         {[{c:'en',f:'🇬🇧'},{c:'es',f:'🇪🇸'},{c:'ar',f:'🇸🇦'},{c:'zh',f:'🇨🇳'}].map(l => (
           <button key={l.c} onClick={() => setLang(l.c)} style={{ width: 32, height: 32, borderRadius: '50%', border: lang === l.c ? '2px solid #13C882' : '2px solid rgba(255,255,255,0.15)', background: 'transparent', fontSize: 16, cursor: 'pointer' }}>{l.f}</button>
         ))}
+        <NavLink to="/subscription" style={{ marginLeft: 8, background: '#13C882', color: '#0D2137', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, textDecoration: 'none' }}>
+          Premium
+        </NavLink>
       </div>
     </div>
   );
