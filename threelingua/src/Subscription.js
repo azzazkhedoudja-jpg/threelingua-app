@@ -1,6 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_KEY);
 
 export default function Subscription() {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    const stripe = await stripePromise;
+    await stripe.redirectToCheckout({
+      lineItems: [{ price: 'price_1TNeXORrCQ7ek0qwzvHtR9Ey', quantity: 1 }],
+      mode: 'subscription',
+      successUrl: window.location.origin + '/success',
+      cancelUrl: window.location.origin + '/subscription',
+      trialPeriodDays: 7,
+    });
+    setLoading(false);
+  };
+
   return (
     <div style={{ padding: '20px 16px' }}>
       <div style={{
@@ -8,7 +26,7 @@ export default function Subscription() {
         fontSize: 24, fontWeight: 800,
         color: '#0D2137', marginBottom: 6
       }}>
-        Passe à Premium
+        Passe à Premium 🚀
       </div>
       <div style={{ fontSize: 14, color: '#9BA4B0', marginBottom: 24 }}>
         Accès complet à ThreeLingua
@@ -44,15 +62,20 @@ export default function Subscription() {
           ))}
         </div>
 
-        <button style={{
-          width: '100%', padding: '14px',
-          background: '#13C882',
-          border: 'none', borderRadius: 12,
-          color: '#0D2137', fontSize: 15,
-          fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'sans-serif'
-        }}>
-          Commencer gratuitement — 7 jours
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px',
+            background: '#13C882',
+            border: 'none', borderRadius: 12,
+            color: '#0D2137', fontSize: 15,
+            fontWeight: 700, cursor: 'pointer',
+            opacity: loading ? 0.7 : 1,
+            fontFamily: 'sans-serif'
+          }}
+        >
+          {loading ? 'Chargement...' : 'Commencer gratuitement — 7 jours'}
         </button>
 
         <div style={{ fontSize: 11, opacity: 0.5, marginTop: 10 }}>
@@ -64,7 +87,7 @@ export default function Subscription() {
         background: '#E3F7EF', borderRadius: 12,
         padding: 14, fontSize: 13, color: '#0F6E56'
       }}>
-        Paiement 100% sécurisé par Stripe.
+        💳 Paiement 100% sécurisé par Stripe.
       </div>
     </div>
   );
