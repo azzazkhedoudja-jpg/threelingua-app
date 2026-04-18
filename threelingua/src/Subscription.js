@@ -1,22 +1,8 @@
-import React, { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_KEY);
+import React from 'react';
 
 export default function Subscription() {
-  const [loading, setLoading] = useState(false);
-
-  const handleSubscribe = async () => {
-    setLoading(true);
-    const stripe = await stripePromise;
-    await stripe.redirectToCheckout({
-      lineItems: [{ price: 'price_1TNeXORrCQ7ek0qwzvHtR9Ey', quantity: 1 }],
-      mode: 'subscription',
-      successUrl: window.location.origin + '/success',
-      cancelUrl: window.location.origin + '/subscription',
-      trialPeriodDays: 7,
-    });
-    setLoading(false);
+  const handleSubscribe = () => {
+    window.location.href = 'https://buy.stripe.com/aFadRb63M0Ly4pW96kdAk00';
   };
 
   return (
@@ -64,18 +50,16 @@ export default function Subscription() {
 
         <button
           onClick={handleSubscribe}
-          disabled={loading}
           style={{
             width: '100%', padding: '14px',
             background: '#13C882',
             border: 'none', borderRadius: 12,
             color: '#0D2137', fontSize: 15,
             fontWeight: 700, cursor: 'pointer',
-            opacity: loading ? 0.7 : 1,
             fontFamily: 'sans-serif'
           }}
         >
-          {loading ? 'Chargement...' : 'Commencer gratuitement — 7 jours'}
+          Commencer gratuitement — 7 jours
         </button>
 
         <div style={{ fontSize: 11, opacity: 0.5, marginTop: 10 }}>
