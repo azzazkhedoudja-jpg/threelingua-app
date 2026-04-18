@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+:root {
+  --navy: #0D2137;
+  --navy-light: #1A3A5C;
+  --teal: #0FA871;
+  --teal-light: #13C882;
+  --teal-pale: #E3F7EF;
+  --amber: #F5A623;
+  --amber-pale: #FEF3DC;
+  --coral: #E8533A;
+  --coral-pale: #FDECEA;
+  --white: #FFFFFF;
+  --off-white: #F7F8FA;
+  --gray-100: #EEF0F3;
+  --gray-200: #D8DCE3;
+  --gray-400: #9BA4B0;
+  --gray-600: #5C6470;
+  --gray-800: #2D3340;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+  --shadow-sm: 0 1px 3px rgba(13,33,55,0.07), 0 1px 2px rgba(13,33,55,0.04);
+  --shadow-md: 0 4px 16px rgba(13,33,55,0.10), 0 2px 6px rgba(13,33,55,0.06);
+  --shadow-lg: 0 12px 40px rgba(13,33,55,0.14), 0 4px 12px rgba(13,33,55,0.08);
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--off-white);
+  color: var(--gray-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; }
+
+button { cursor: pointer; font-family: var(--font-body); }
+input, select, textarea { font-family: var(--font-body); }
+
+a { text-decoration: none; color: inherit; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
