@@ -14,7 +14,7 @@ const FREE_CATEGORIES = 2;
 export default function Daily() {
   const [expanded, setExpanded] = useState(null);
   const { updateProgress, user } = useApp();
-  const isPremium = !!user;
+ const { updateProgress, isPremium } = useApp();
 
   const visibleCategories = isPremium ? dailyCategories : dailyCategories.slice(0, FREE_CATEGORIES);
 

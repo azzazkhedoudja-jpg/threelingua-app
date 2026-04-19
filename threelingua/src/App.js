@@ -13,7 +13,7 @@ export const AppContext = createContext();
 export function useApp() { return useContext(AppContext); }
 
 function Header() {
-  const { lang, setLang, user, setUser } = useApp();
+  const { lang, setLang, user, setUser, isPremium } = useApp();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -32,7 +32,7 @@ function Header() {
         ))}
         {user ? (
           <button onClick={handleLogout} style={{ marginLeft: 8, background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>
-            Déconnexion
+            {isPremium ? '⭐ Premium' : 'Déconnexion'}
           </button>
         ) : (
           <NavLink to="/auth" style={{ marginLeft: 8, background: '#13C882', color: '#0D2137', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, textDecoration: 'none' }}>
@@ -60,20 +60,33 @@ function NavBar() {
 export default function App() {
   const [lang, setLang] = useState('en');
   const [user, setUser] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
   const [progress, setProgress] = useState({ metroLinesViewed: [], dailyCatsViewed: [], phrasesPlayed: [] });
   const updateProgress = (type, id) => setProgress(prev => ({ ...prev, [type]: prev[type].includes(id) ? prev[type] : [...prev[type], id] }));
+
+  const checkPremium = async (userId) => {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('is_premium')
+      .eq('user_id', userId)
+      .single();
+    setIsPremium(data?.is_premium || false);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) checkPremium(session.user.id);
     });
     supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) checkPremium(session.user.id);
+      else setIsPremium(false);
     });
   }, []);
 
   return (
-    <AppContext.Provider value={{ lang, setLang, user, setUser, progress, updateProgress }}>
+    <AppContext.Provider value={{ lang, setLang, user, setUser, isPremium, progress, updateProgress }}>
       <BrowserRouter>
         <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#f7f8fa' }}>
           <Header />

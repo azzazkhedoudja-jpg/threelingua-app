@@ -8,7 +8,7 @@ export default function Metro() {
   const [selectedLine, setSelectedLine] = useState(null);
   const [search, setSearch] = useState(false);
   const { updateProgress, user } = useApp();
-  const isPremium = !!user;
+  const { updateProgress, isPremium } = useApp();
 
   const visibleLines = isPremium
     ? metroLines
