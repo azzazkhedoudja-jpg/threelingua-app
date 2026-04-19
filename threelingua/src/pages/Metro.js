@@ -7,7 +7,8 @@ const FREE_LINES = ['1', '4', 'RER-A'];
 export default function Metro() {
   const [selectedLine, setSelectedLine] = useState(null);
   ;
-  const { updateProgress, isPremium } = useApp();
+ const [search, setSearch] = useState('');
+const { updateProgress, isPremium } = useApp();
 
   const visibleLines = isPremium
     ? metroLines
