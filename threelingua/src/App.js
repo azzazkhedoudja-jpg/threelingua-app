@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import './styles/global.css';
 import Home from './pages/Home';
@@ -6,12 +6,20 @@ import Metro from './pages/Metro';
 import Daily from './pages/Daily';
 import Phrases from './pages/Phrases';
 import Subscription from './Subscription';
+import Auth from './Auth';
+import { supabase } from './supabase';
 
 export const AppContext = createContext();
 export function useApp() { return useContext(AppContext); }
 
 function Header() {
-  const { lang, setLang } = useApp();
+  const { lang, setLang, user, setUser } = useApp();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
     <div style={{ background: '#0D2137', padding: '14px 20px 12px', position: 'sticky', top: 0, zIndex: 99, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <div>
@@ -22,9 +30,15 @@ function Header() {
         {[{c:'en',f:'🇬🇧'},{c:'es',f:'🇪🇸'},{c:'ar',f:'🇸🇦'},{c:'zh',f:'🇨🇳'}].map(l => (
           <button key={l.c} onClick={() => setLang(l.c)} style={{ width: 32, height: 32, borderRadius: '50%', border: lang === l.c ? '2px solid #13C882' : '2px solid rgba(255,255,255,0.15)', background: 'transparent', fontSize: 16, cursor: 'pointer' }}>{l.f}</button>
         ))}
-        <NavLink to="/subscription" style={{ marginLeft: 8, background: '#13C882', color: '#0D2137', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, textDecoration: 'none' }}>
-          Premium
-        </NavLink>
+        {user ? (
+          <button onClick={handleLogout} style={{ marginLeft: 8, background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>
+            Déconnexion
+          </button>
+        ) : (
+          <NavLink to="/auth" style={{ marginLeft: 8, background: '#13C882', color: '#0D2137', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 20, textDecoration: 'none' }}>
+            Connexion
+          </NavLink>
+        )}
       </div>
     </div>
   );
@@ -45,11 +59,21 @@ function NavBar() {
 
 export default function App() {
   const [lang, setLang] = useState('en');
+  const [user, setUser] = useState(null);
   const [progress, setProgress] = useState({ metroLinesViewed: [], dailyCatsViewed: [], phrasesPlayed: [] });
   const updateProgress = (type, id) => setProgress(prev => ({ ...prev, [type]: prev[type].includes(id) ? prev[type] : [...prev[type], id] }));
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
+
   return (
-    <AppContext.Provider value={{ lang, setLang, progress, updateProgress }}>
+    <AppContext.Provider value={{ lang, setLang, user, setUser, progress, updateProgress }}>
       <BrowserRouter>
         <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#f7f8fa' }}>
           <Header />
@@ -60,6 +84,7 @@ export default function App() {
               <Route path="/quotidien" element={<Daily />} />
               <Route path="/phrases" element={<Phrases />} />
               <Route path="/subscription" element={<Subscription />} />
+              <Route path="/auth" element={<Auth onLogin={setUser} />} />
             </Routes>
           </main>
           <NavBar />
