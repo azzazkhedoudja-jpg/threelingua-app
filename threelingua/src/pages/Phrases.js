@@ -12,7 +12,7 @@ const FREE_PHRASES = 3;
 
 export default function Phrases() {
   const [activeCat, setActiveCat] = useState('metro');
-  const { lang, updateProgress, user } = useApp();
+ 
   const { lang, updateProgress, isPremium } = useApp();
 
   const currentCat = categories.find(c => c.id === activeCat);
