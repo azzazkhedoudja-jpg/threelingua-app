@@ -24,13 +24,17 @@ export default function Auth({ onLogin }) {
     }
 
     if (isLogin) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMessage('Email ou mot de passe incorrect');
-      else onLogin(data.user);
+      else window.location.href = '/';
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setMessage('Erreur lors de la création du compte');
-      else setMessage('Vérifie ton email pour confirmer ton compte !');
+      else {
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginError) setMessage('Compte créé ! Connecte-toi maintenant.');
+        else window.location.href = '/';
+      }
     }
     setLoading(false);
   };
