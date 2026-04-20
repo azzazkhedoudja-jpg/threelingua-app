@@ -11,10 +11,33 @@ const colorMap = {
 
 const FREE_CATEGORIES = 2;
 
+const pageTitles = {
+  fr: 'Vie quotidienne',
+  en: 'Daily life',
+  es: 'Vida cotidiana',
+  ar: 'الحياة اليومية',
+  'ar-ma': 'الحياة اليومية',
+  'ar-dz': 'الحياة اليومية',
+  'ar-tn': 'الحياة اليومية',
+  'ar-eg': 'الحياة اليومية',
+  zh: '日常生活'
+};
+
+const pageSubtitles = {
+  fr: "Tout ce qu'il faut savoir pour s'installer à Paris",
+  en: 'Everything you need to know to settle in Paris',
+  es: 'Todo lo que necesitas para instalarte en París',
+  ar: 'كل ما تحتاج معرفته للاستقرار في باريس',
+  'ar-ma': 'كل شي خاصك تعرفو باش تستقر فباريس',
+  'ar-dz': 'كل شي لازم تعرفو باش تستقر في باريس',
+  'ar-tn': 'كل شي لازم تعرفو باش تستقر في باريس',
+  'ar-eg': 'كل اللي محتاج تعرفه عشان تستقر في باريس',
+  zh: '在巴黎定居所需了解的一切'
+};
+
 export default function Daily() {
   const [expanded, setExpanded] = useState(null);
-  const { updateProgress, isPremium } = useApp();
- 
+  const { updateProgress, isPremium, lang } = useApp();
 
   const visibleCategories = isPremium ? dailyCategories : dailyCategories.slice(0, FREE_CATEGORIES);
 
@@ -24,13 +47,17 @@ export default function Daily() {
     if (next) updateProgress('dailyCatsViewed', id);
   };
 
+  const getTitle = (cat) => cat.titles?.[lang] || cat.titles?.fr || cat.title;
+  const getTipTitle = (tip) => tip.titles?.[lang] || tip.titles?.fr || tip.title;
+  const getTipText = (tip) => tip.texts?.[lang] || tip.texts?.fr || tip.text;
+
   return (
     <div style={{ padding: '20px 16px' }}>
       <div style={{ fontFamily: 'sans-serif', fontSize: 22, fontWeight: 800, color: '#0D2137', marginBottom: 4 }}>
-        Vie quotidienne
+        {pageTitles[lang] || pageTitles.fr}
       </div>
       <div style={{ fontSize: 13, color: '#9BA4B0', marginBottom: 16 }}>
-        Tout ce qu'il faut savoir pour s'installer à Paris
+        {pageSubtitles[lang] || pageSubtitles.fr}
       </div>
 
       {!isPremium && (
@@ -46,7 +73,7 @@ export default function Daily() {
           <div key={cat.id} style={{ marginBottom: 10 }}>
             <button onClick={() => handleExpand(cat.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: isOpen ? colors.bg : 'white', border: isOpen ? `2px solid ${colors.border}` : '1px solid #EEF0F3', borderRadius: isOpen ? '14px 14px 0 0' : 14, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
               <span style={{ fontSize: 24 }}>{cat.icon}</span>
-              <span style={{ flex: 1, fontFamily: 'sans-serif', fontSize: 15, fontWeight: 700, color: isOpen ? colors.text : '#2D3340' }}>{cat.title}</span>
+              <span style={{ flex: 1, fontFamily: 'sans-serif', fontSize: 15, fontWeight: 700, color: isOpen ? colors.text : '#2D3340' }}>{getTitle(cat)}</span>
               <span style={{ fontSize: 18, color: isOpen ? colors.text : '#D8DCE3', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
             </button>
 
@@ -54,8 +81,8 @@ export default function Daily() {
               <div style={{ background: 'white', border: `2px solid ${colors.border}`, borderTop: 'none', borderRadius: '0 0 14px 14px', padding: '4px 16px 16px' }}>
                 {cat.tips.map((tip, i) => (
                   <div key={i} style={{ paddingTop: 12, marginTop: 12, borderTop: i > 0 ? '1px solid #EEF0F3' : 'none' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: colors.text, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{tip.title}</div>
-                    <div style={{ fontSize: 13, color: '#5C6470', lineHeight: 1.6 }}>{tip.text}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: colors.text, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{getTipTitle(tip)}</div>
+                    <div style={{ fontSize: 13, color: '#5C6470', lineHeight: 1.6 }}>{getTipText(tip)}</div>
                   </div>
                 ))}
               </div>
