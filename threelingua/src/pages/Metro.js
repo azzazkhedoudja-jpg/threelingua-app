@@ -4,11 +4,34 @@ import { useApp } from '../App';
 
 const FREE_LINES = ['1', '4', 'RER-A'];
 
+const pageTitles = {
+  fr: 'Métro & RER',
+  en: 'Metro & RER',
+  es: 'Metro y RER',
+  ar: 'المترو و RER',
+  'ar-ma': 'المترو و RER',
+  'ar-dz': 'المترو و RER',
+  'ar-tn': 'المترو و RER',
+  'ar-eg': 'المترو و RER',
+  zh: '地铁与RER'
+};
+
+const pageSubtitles = {
+  fr: "Les lignes essentielles de Paris & Île-de-France",
+  en: 'Essential lines of Paris & Île-de-France',
+  es: 'Líneas esenciales de París y la Île-de-France',
+  ar: 'الخطوط الأساسية لباريس وإيل دو فرانس',
+  'ar-ma': 'الخطوط الأساسية ديال باريس و إيل دو فرانس',
+  'ar-dz': 'الخطوط الأساسية تاع باريس و إيل دو فرانس',
+  'ar-tn': 'الخطوط الأساسية متاع باريس و إيل دو فرانس',
+  'ar-eg': 'الخطوط الأساسية لباريس وإيل دو فرانس',
+  zh: '巴黎和法兰西岛的主要线路'
+};
+
 export default function Metro() {
   const [selectedLine, setSelectedLine] = useState(null);
-  ;
- const [search, setSearch] = useState('');
-const { updateProgress, isPremium } = useApp();
+  const [search, setSearch] = useState('');
+  const { updateProgress, isPremium, lang } = useApp();
 
   const visibleLines = isPremium
     ? metroLines
@@ -19,13 +42,16 @@ const { updateProgress, isPremium } = useApp();
     updateProgress('metroLinesViewed', line.id);
   };
 
+  const getDirection = (line) => line.directions?.[lang] || line.directions?.fr || line.direction;
+  const getTip = (line) => line.tips?.[lang] || line.tips?.fr || line.tip;
+
   return (
     <div style={{ padding: '20px 16px' }}>
-      <div style={{ fontFamily: 'var(--font-display, sans-serif)', fontSize: 22, fontWeight: 800, color: '#0D2137', marginBottom: 4 }}>
-        Métro & RER
+      <div style={{ fontFamily: 'sans-serif', fontSize: 22, fontWeight: 800, color: '#0D2137', marginBottom: 4 }}>
+        {pageTitles[lang] || pageTitles.fr}
       </div>
       <div style={{ fontSize: 13, color: '#9BA4B0', marginBottom: 16 }}>
-        Les lignes essentielles de Paris & Île-de-France
+        {pageSubtitles[lang] || pageSubtitles.fr}
       </div>
 
       {!isPremium && (
@@ -48,7 +74,7 @@ const { updateProgress, isPremium } = useApp();
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: selectedLine.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', fontSize: 18, fontWeight: 800, color: selectedLine.textColor, flexShrink: 0 }}>{selectedLine.number}</div>
             <div>
               <div style={{ fontFamily: 'sans-serif', fontSize: 15, fontWeight: 700, color: '#0D2137' }}>Ligne {selectedLine.number}</div>
-              <div style={{ fontSize: 12, color: '#9BA4B0' }}>{selectedLine.direction}</div>
+              <div style={{ fontSize: 12, color: '#9BA4B0' }}>{getDirection(selectedLine)}</div>
             </div>
             <button onClick={() => setSelectedLine(null)} style={{ marginLeft: 'auto', background: '#EEF0F3', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 14, color: '#9BA4B0', cursor: 'pointer' }}>✕</button>
           </div>
@@ -59,14 +85,14 @@ const { updateProgress, isPremium } = useApp();
             ))}
           </div>
           <div style={{ background: '#E3F7EF', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#0F6E56', lineHeight: 1.5 }}>
-            💡 {selectedLine.tip}
+            💡 {getTip(selectedLine)}
           </div>
         </div>
       )}
 
       <div style={{ fontSize: 13, fontWeight: 600, color: '#5C6470', fontFamily: 'sans-serif', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Métro</div>
       {visibleLines.filter(l => l.type === 'metro').map(line => (
-        <LineCard key={line.id} line={line} onSelect={handleSelect} selected={selectedLine?.id === line.id} />
+        <LineCard key={line.id} line={line} onSelect={handleSelect} selected={selectedLine?.id === line.id} getDirection={getDirection} />
       ))}
 
       {!isPremium && (
@@ -80,7 +106,7 @@ const { updateProgress, isPremium } = useApp();
         <>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#5C6470', fontFamily: 'sans-serif', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginTop: 16 }}>RER</div>
           {visibleLines.filter(l => l.type === 'rer').map(line => (
-            <LineCard key={line.id} line={line} onSelect={handleSelect} selected={selectedLine?.id === line.id} />
+            <LineCard key={line.id} line={line} onSelect={handleSelect} selected={selectedLine?.id === line.id} getDirection={getDirection} />
           ))}
         </>
       )}
@@ -105,13 +131,13 @@ const { updateProgress, isPremium } = useApp();
   );
 }
 
-function LineCard({ line, onSelect, selected }) {
+function LineCard({ line, onSelect, selected, getDirection }) {
   return (
     <div onClick={() => onSelect(line)} style={{ background: selected ? '#f0f2f5' : 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: selected ? `2px solid ${line.color}` : '1px solid #EEF0F3', transition: 'all 0.15s' }}>
       <div style={{ width: 36, height: 36, borderRadius: '50%', background: line.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', fontSize: 14, fontWeight: 800, color: line.textColor, flexShrink: 0 }}>{line.number}</div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#2D3340' }}>{line.type === 'rer' ? 'RER ' : 'Ligne '}{line.number}</div>
-        <div style={{ fontSize: 12, color: '#9BA4B0', marginTop: 1 }}>{line.direction}</div>
+        <div style={{ fontSize: 12, color: '#9BA4B0', marginTop: 1 }}>{getDirection(line)}</div>
       </div>
       <div style={{ fontSize: 18, color: '#D8DCE3' }}>›</div>
     </div>
