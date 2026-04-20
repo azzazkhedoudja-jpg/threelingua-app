@@ -27,7 +27,7 @@ function Header() {
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Paris & Île-de-France</div>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        {[{c:'en',f:'🇬🇧'},{c:'es',f:'🇪🇸'},{c:'ar',f:'🇸🇦'},{c:'zh',f:'🇨🇳'}].map(l => (
+        {[{c:'fr',f:'🇫🇷'},{c:'en',f:'🇬🇧'},{c:'es',f:'🇪🇸'},{c:'ar',f:'🇸🇦'},{c:'zh',f:'🇨🇳'}].map(l => (
           <button key={l.c} onClick={() => setLang(l.c)} style={{ width: 32, height: 32, borderRadius: '50%', border: lang === l.c ? '2px solid #13C882' : '2px solid rgba(255,255,255,0.15)', background: 'transparent', fontSize: 16, cursor: 'pointer' }}>{l.f}</button>
         ))}
         {user ? (
