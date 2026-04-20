@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 
 export default function Auth({ onLogin }) {
@@ -6,12 +6,31 @@ export default function Auth({ onLogin }) {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [isForgot, setIsForgot] = useState(false);
+  const [isReset, setIsReset] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')) {
+      setIsReset(true);
+    }
+  }, []);
 
   const handleSubmit = async () => {
     setLoading(true);
     setMessage('');
+
+    if (isReset) {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) setMessage('Erreur lors du changement de mot de passe');
+      else {
+        setMessage('Mot de passe changé ! Redirection...');
+        setTimeout(() => window.location.href = '/', 2000);
+      }
+      setLoading(false);
+      return;
+    }
 
     if (isForgot) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -42,24 +61,26 @@ export default function Auth({ onLogin }) {
   return (
     <div style={{ padding: '40px 20px', textAlign: 'center' }}>
       <div style={{ fontFamily: 'sans-serif', fontSize: 24, fontWeight: 800, color: '#0D2137', marginBottom: 8 }}>
-        {isForgot ? 'Mot de passe oublié' : isLogin ? 'Connexion' : 'Créer un compte'}
+        {isReset ? 'Nouveau mot de passe' : isForgot ? 'Mot de passe oublié' : isLogin ? 'Connexion' : 'Créer un compte'}
       </div>
       <div style={{ fontSize: 13, color: '#9BA4B0', marginBottom: 24 }}>
-        {isForgot ? 'Entre ton email pour réinitialiser ton mot de passe' : isLogin ? 'Connecte-toi pour accéder à ThreeLingua' : 'Crée ton compte gratuitement'}
+        {isReset ? 'Choisis un nouveau mot de passe' : isForgot ? 'Entre ton email pour réinitialiser ton mot de passe' : isLogin ? 'Connecte-toi pour accéder à ThreeLingua' : 'Crée ton compte gratuitement'}
       </div>
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        style={{ width: '100%', padding: '12px', marginBottom: 10, border: '1px solid #ddd', borderRadius: 10, fontSize: 14, boxSizing: 'border-box' }}
-      />
+      {!isReset && (
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          style={{ width: '100%', padding: '12px', marginBottom: 10, border: '1px solid #ddd', borderRadius: 10, fontSize: 14, boxSizing: 'border-box' }}
+        />
+      )}
 
-      {!isForgot && (
+      {(!isForgot || isReset) && (
         <input
           type="password"
-          placeholder="Mot de passe"
+          placeholder={isReset ? "Nouveau mot de passe" : "Mot de passe"}
           value={password}
           onChange={e => setPassword(e.target.value)}
           style={{ width: '100%', padding: '12px', marginBottom: 16, border: '1px solid #ddd', borderRadius: 10, fontSize: 14, boxSizing: 'border-box' }}
@@ -77,20 +98,22 @@ export default function Auth({ onLogin }) {
         disabled={loading}
         style={{ width: '100%', padding: 14, background: '#0D2137', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}
       >
-        {loading ? 'Chargement...' : isForgot ? 'Envoyer le lien' : isLogin ? 'Se connecter' : 'Créer mon compte'}
+        {loading ? 'Chargement...' : isReset ? 'Changer mon mot de passe' : isForgot ? 'Envoyer le lien' : isLogin ? 'Se connecter' : 'Créer mon compte'}
       </button>
 
-      {!isForgot && isLogin && (
+      {!isForgot && !isReset && isLogin && (
         <div onClick={() => setIsForgot(true)} style={{ fontSize: 13, color: '#9BA4B0', cursor: 'pointer', marginBottom: 8 }}>
           Mot de passe oublié ?
         </div>
       )}
 
-      {isForgot ? (
+      {isForgot && !isReset && (
         <div onClick={() => setIsForgot(false)} style={{ fontSize: 13, color: '#0D2137', cursor: 'pointer', textDecoration: 'underline' }}>
           Retour à la connexion
         </div>
-      ) : (
+      )}
+
+      {!isForgot && !isReset && (
         <div onClick={() => setIsLogin(!isLogin)} style={{ fontSize: 13, color: '#0D2137', cursor: 'pointer', textDecoration: 'underline' }}>
           {isLogin ? "Pas encore de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
         </div>
