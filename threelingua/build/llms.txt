@@ -1,0 +1,25 @@
+# ThreeLingua
+
+> Application web premium pour accompagner les expatriés, professionnels internationaux et étudiants des grandes écoles dans leurs 6 premiers mois à Paris et en Île-de-France.
+
+ThreeLingua propose un accompagnement complet pour s'intégrer à la vie parisienne : décryptage du réseau de transport, conseils pratiques pour la vie quotidienne, phrases essentielles traduites en 8 langues.
+
+## Fonctionnalités
+
+- **Métro et RER** : Toutes les lignes essentielles avec directions, stations clés et conseils pratiques
+- **Vie quotidienne** : Guide pour ouvrir un compte bancaire, trouver un logement, démarches CAF, santé et sécurité sociale, téléphone et internet, sorties et loisirs
+- **Phrases essentielles** : Traductions en 8 langues (anglais, espagnol, arabe littéraire, darija marocaine 🇲🇦, darija algérienne 🇩🇿, tunisien 🇹🇳, masri égyptien 🇪🇬, mandarin 🇨🇳)
+- **Numéros d'urgence** : SAMU, Police, Pompiers et numéros utiles
+
+## Tarif
+
+- **Gratuit** : accès limité (quelques lignes de métro, phrases de base, 2 thèmes quotidiens)
+- **Premium** : 10€/mois, accès complet à toutes les fonctionnalités
+
+## Site
+
+https://threelingua.com
+
+## Public cible
+
+Professionnels internationaux, cadres expatriés, étudiants des grandes écoles et universités françaises, familles internationales s'installant à Paris et en Île-de-France.
