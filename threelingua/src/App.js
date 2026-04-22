@@ -58,7 +58,16 @@ function NavBar() {
 }
 
 export default function App() {
-  const [lang, setLang] = useState('en');
+ const getDefaultLang = () => {
+  const browserLang = navigator.language || 'fr';
+  if (browserLang.startsWith('fr')) return 'fr';
+  if (browserLang.startsWith('es')) return 'es';
+  if (browserLang.startsWith('ar')) return 'ar';
+  if (browserLang.startsWith('zh')) return 'zh';
+  return 'en';
+};
+
+const [lang, setLang] = useState(getDefaultLang());
   const [user, setUser] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [progress, setProgress] = useState({ metroLinesViewed: [], dailyCatsViewed: [], phrasesPlayed: [] });
