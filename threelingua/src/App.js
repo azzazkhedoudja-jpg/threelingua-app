@@ -109,7 +109,10 @@ const [lang, setLang] = useState(getDefaultLang());
               <Route path="/auth" element={<Auth onLogin={setUser} />} />
             </Routes>
           </main>
-          <NavBar />
+         <NavBar />
+          <footer style={{ textAlign: 'center', padding: '20px 16px 80px', fontSize: 11, color: '#9BA4B0' }}>
+            <a href="/mentions.html" style={{ color: '#9BA4B0', textDecoration: 'underline' }}>Mentions légales · Confidentialité · CGV · Cookies</a>
+          </footer>
         </div>
       </BrowserRouter>
     </AppContext.Provider>
