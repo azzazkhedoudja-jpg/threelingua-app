@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<!-- saved from url=(0012)about:srcdoc -->
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informations légales — ThreeLingua</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    color: #2D3340;
+    line-height: 1.6;
+    background: #fafafa;
+  }
+  h1 {
+    font-size: 26px;
+    color: #0D2137;
+    margin-top: 40px;
+    border-bottom: 2px solid #13C882;
+    padding-bottom: 8px;
+  }
+  h2 {
+    font-size: 18px;
+    color: #0D2137;
+    margin-top: 28px;
+  }
+  p, li { font-size: 14px; }
+  a { color: #0F6E56; }
+  nav {
+    background: #0D2137;
+    color: white;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  nav a { color: #13C882; margin-right: 16px; font-weight: 600; }
+  .updated { color: #9BA4B0; font-size: 12px; margin-bottom: 30px; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 60px 0; }
+</style>
+</head>
+<body id="artifacts-component-root-html">
+
+<nav>
+  <a href="https://www.claudeusercontent.com/?domain=claude.ai&amp;parentOrigin=https%3A%2F%2Fclaude.ai&amp;errorReportingMode=parent&amp;formattedSpreadsheets=true#mentions">Mentions légales</a>
+  <a href="https://www.claudeusercontent.com/?domain=claude.ai&amp;parentOrigin=https%3A%2F%2Fclaude.ai&amp;errorReportingMode=parent&amp;formattedSpreadsheets=true#confidentialite">Confidentialité</a>
+  <a href="https://www.claudeusercontent.com/?domain=claude.ai&amp;parentOrigin=https%3A%2F%2Fclaude.ai&amp;errorReportingMode=parent&amp;formattedSpreadsheets=true#cgv">CGV</a>
+  <a href="https://www.claudeusercontent.com/?domain=claude.ai&amp;parentOrigin=https%3A%2F%2Fclaude.ai&amp;errorReportingMode=parent&amp;formattedSpreadsheets=true#cookies">Cookies</a>
+</nav>
+
+<!-- ====== MENTIONS LÉGALES ====== -->
+<h1 id="mentions">📋 Mentions légales</h1>
+<p class="updated">Dernière mise à jour : mai 2026</p>
+
+<h2>1. Éditeur du site</h2>
+<p>
+Le site <strong>threelingua.com</strong> est édité par :<br>
+<strong>Meriem Azzaz</strong><br>
+Email : <a href="mailto:threelingua@gmail.com">threelingua@gmail.com</a><br>
+Ville : Paris, France
+</p>
+
+<h2>2. Hébergement</h2>
+<p>
+Le site est hébergé par :<br>
+<strong>Netlify, Inc.</strong><br>
+512 2nd Street, Suite 200<br>
+San Francisco, CA 94107, États-Unis<br>
+Site : <a href="https://www.netlify.com/" target="_blank">www.netlify.com</a>
+</p>
+
+<h2>3. Nom de domaine</h2>
+<p>
+Le nom de domaine threelingua.com est enregistré auprès de <strong>OVH SAS</strong>, 2 rue Kellermann, 59100 Roubaix, France.
+</p>
+
+<h2>4. Directrice de la publication</h2>
+<p>Meriem Azzaz</p>
+
+<h2>5. Propriété intellectuelle</h2>
+<p>
+L'ensemble des contenus présents sur threelingua.com (textes, images, logos, traductions, code) est la propriété exclusive de Meriem Azzaz, sauf mention contraire. Toute reproduction, représentation, modification, publication ou adaptation, totale ou partielle, est interdite sans l'autorisation écrite préalable de l'éditrice.
+</p>
+
+<h2>6. Contact</h2>
+<p>Pour toute question : <a href="mailto:threelingua@gmail.com">threelingua@gmail.com</a></p>
+
+<hr>
+
+<!-- ====== POLITIQUE DE CONFIDENTIALITÉ ====== -->
+<h1 id="confidentialite">🔒 Politique de confidentialité</h1>
+<p class="updated">Dernière mise à jour : mai 2026</p>
+
+<h2>1. Données collectées</h2>
+<p>ThreeLingua collecte les données suivantes :</p>
+<ul>
+  <li><strong>Email</strong> et <strong>mot de passe</strong> (chiffré) lors de l'inscription</li>
+  <li><strong>Données de paiement</strong> traitées par Stripe (ThreeLingua ne stocke aucune donnée bancaire)</li>
+  <li><strong>Données d'usage anonymisées</strong> (pages vues, durée de session) via Google Analytics</li>
+  <li><strong>Préférences linguistiques</strong> et progression dans l'application</li>
+</ul>
+
+<h2>2. Finalités</h2>
+<ul>
+  <li>Fournir le service ThreeLingua (accès gratuit ou Premium)</li>
+  <li>Gérer les abonnements et paiements</li>
+  <li>Améliorer l'expérience utilisateur</li>
+  <li>Répondre aux demandes d'assistance</li>
+</ul>
+
+<h2>3. Durée de conservation</h2>
+<p>Les données sont conservées pendant la durée de l'abonnement, puis 3 ans après la dernière activité, conformément à la loi française.</p>
+
+<h2>4. Sous-traitants</h2>
+<ul>
+  <li><strong>Supabase</strong> (authentification + base de données) — Singapour / Europe</li>
+  <li><strong>Stripe</strong> (paiements) — Irlande / États-Unis</li>
+  <li><strong>Resend</strong> (envoi d'emails) — États-Unis</li>
+  <li><strong>Netlify</strong> (hébergement) — États-Unis</li>
+  <li><strong>Google Analytics</strong> (statistiques anonymisées) — États-Unis</li>
+</ul>
+
+<h2>5. Vos droits (RGPD)</h2>
+<p>Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :</p>
+<ul>
+  <li>Droit d'accès à vos données</li>
+  <li>Droit de rectification</li>
+  <li>Droit à l'effacement (« droit à l'oubli »)</li>
+  <li>Droit à la portabilité</li>
+  <li>Droit d'opposition</li>
+</ul>
+<p>Pour exercer ces droits, contactez : <a href="mailto:threelingua@gmail.com">threelingua@gmail.com</a></p>
+
+<h2>6. Sécurité</h2>
+<p>Toutes les données sont transmises via HTTPS (connexion chiffrée). Les mots de passe sont chiffrés. Les paiements sont gérés exclusivement par Stripe (certifié PCI-DSS niveau 1).</p>
+
+<h2>7. CNIL</h2>
+<p>Vous pouvez introduire une réclamation auprès de la <strong>CNIL</strong> à tout moment : <a href="https://www.cnil.fr/" target="_blank">www.cnil.fr</a></p>
+
+<hr>
+
+<!-- ====== CGV ====== -->
+<h1 id="cgv">📑 Conditions Générales de Vente</h1>
+<p class="updated">Dernière mise à jour : mai 2026</p>
+
+<h2>1. Objet</h2>
+<p>Les présentes CGV régissent l'utilisation du service ThreeLingua, application web d'accompagnement pour expatriés et étudiants internationaux à Paris et en Île-de-France.</p>
+
+<h2>2. Service</h2>
+<p>ThreeLingua propose deux formules :</p>
+<ul>
+  <li><strong>Gratuite</strong> : accès limité (3 lignes de métro, 5 phrases par catégorie, 2 thèmes quotidiens)</li>
+  <li><strong>Premium</strong> : 10 € TTC par mois, accès complet à l'ensemble des contenus</li>
+</ul>
+
+<h2>3. Inscription</h2>
+<p>L'inscription est gratuite et nécessite une adresse email valide. L'utilisateur s'engage à fournir des informations exactes.</p>
+
+<h2>4. Paiement</h2>
+<p>Le paiement de l'abonnement Premium est traité par <strong>Stripe</strong>. Les moyens acceptés sont : carte bancaire (Visa, Mastercard, American Express), PayPal, Apple Pay, Google Pay et cartes prépayées.</p>
+<p>L'abonnement est mensuel et se renouvelle automatiquement. Il peut être résilié à tout moment depuis l'espace client ou par email.</p>
+
+<h2>5. Droit de rétractation</h2>
+<p>Conformément à l'article L.221-28 du Code de la consommation, l'abonnement Premium étant un contenu numérique fourni immédiatement après paiement avec accord exprès du consommateur, le droit de rétractation de 14 jours ne s'applique pas dès lors que l'utilisateur a commencé à utiliser le service.</p>
+
+<h2>6. Résiliation</h2>
+<p>L'utilisateur peut résilier son abonnement à tout moment. La résiliation prend effet à la fin de la période en cours. Aucun remboursement au prorata n'est dû.</p>
+
+<h2>7. Responsabilité</h2>
+<p>Les informations fournies sur ThreeLingua sont à titre indicatif. ThreeLingua s'efforce de les maintenir à jour mais ne peut être tenue responsable des erreurs ou omissions, ni des conséquences de leur utilisation.</p>
+
+<h2>8. Disponibilité du service</h2>
+<p>ThreeLingua s'engage à assurer une disponibilité raisonnable du service. Des interruptions temporaires peuvent survenir pour maintenance ou en cas de force majeure.</p>
+
+<h2>9. Modification des CGV</h2>
+<p>ThreeLingua se réserve le droit de modifier les présentes CGV. Les utilisateurs en seront informés par email.</p>
+
+<h2>10. Litiges</h2>
+<p>Les présentes CGV sont soumises au droit français. En cas de litige, une solution amiable sera recherchée. À défaut, les tribunaux français seront seuls compétents.</p>
+<p>Conformément à l'article L.611-1 du Code de la consommation, l'utilisateur peut recourir gratuitement au médiateur de la consommation : <a href="https://www.economie.gouv.fr/mediation-conso" target="_blank">www.economie.gouv.fr/mediation-conso</a></p>
+
+<hr>
+
+<!-- ====== COOKIES ====== -->
+<h1 id="cookies">🍪 Politique des cookies</h1>
+<p class="updated">Dernière mise à jour : mai 2026</p>
+
+<h2>1. Qu'est-ce qu'un cookie ?</h2>
+<p>Un cookie est un petit fichier texte stocké sur votre appareil lorsque vous visitez un site web.</p>
+
+<h2>2. Cookies utilisés sur ThreeLingua</h2>
+<ul>
+  <li><strong>Cookies essentiels</strong> : nécessaires au fonctionnement (connexion, préférences). Pas de consentement requis.</li>
+  <li><strong>Cookies de mesure d'audience</strong> : Google Analytics (anonymisé) pour comprendre l'usage du site.</li>
+</ul>
+
+<h2>3. Gérer vos cookies</h2>
+<p>Vous pouvez à tout moment refuser les cookies via les paramètres de votre navigateur. Le refus des cookies essentiels peut empêcher l'utilisation de certaines fonctionnalités.</p>
+
+<h2>4. Durée de conservation</h2>
+<p>Les cookies sont conservés au maximum 13 mois conformément aux recommandations de la CNIL.</p>
+
+<h2>5. Contact</h2>
+<p>Pour toute question relative aux cookies : <a href="mailto:threelingua@gmail.com">threelingua@gmail.com</a></p>
+
+
+
+</body></html>
